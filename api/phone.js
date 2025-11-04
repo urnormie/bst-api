@@ -1,4 +1,5 @@
-import fetch from "node-fetch";
+// 👇 Yeh line sabse upar likhni hai
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 export default async function handler(req, res) {
   const { phone } = req.query;
@@ -8,12 +9,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Fetch data from original API
     const response = await fetch(https://osintapi.anshapi.workers.dev/?phone=${phone});
     const data = await response.json();
 
+    // Developer field remove karna
     delete data.developer;
+
+    // Apna name add karna
     data.source_by = "BST API";
 
+    // Final output
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({
