@@ -1,4 +1,11 @@
 export default async function handler(req, res) {
+  // Set timeout to prevent hanging
+  res.setTimeout(10000, () => {
+    if (!res.headersSent) {
+      res.status(504).json({ error: "Request timeout" });
+    }
+  });
+
   const { phone } = req.query;
 
   if (!phone) {
@@ -6,28 +13,56 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = https://osintapi.anshapi.workers.dev/?phone=${phone};
+    console.log(Request for phone: ${phone});
     
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     
+    const response = await fetch(https://osintapi.anshapi.workers.dev/?phone=${phone}, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error(HTTP error! status: ${response.status});
+      return res.status(502).json({
+        error: External API returned ${response.status},
+        status: response.status
+      });
     }
+
+    const text = await response.text();
     
-    const data = await response.json();
-    
-    // Remove developer field and add source_by
+    if (!text) {
+      return res.status(502).json({ error: "Empty response from external API" });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      return res.status(502).json({ 
+        error: "Invalid JSON from external API",
+        response: text.substring(0, 100)
+      });
+    }
+
+    // Clean up response
     delete data.developer;
     data.source_by = "BST API";
-    
-    res.status(200).json(data);
-    
+
+    return res.status(200).json(data);
+
   } catch (error) {
-    console.error('API Error:', error);
-    res.status(500).json({
-      success: false,
-      error: "Server Error",
-      message: error.message,
+    console.error('Full error:', error);
+    
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: "Request timeout" });
+    }
+    
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error.message
     });
   }
 }
