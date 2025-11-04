@@ -1,7 +1,9 @@
 {
   "name": "bst-api",
   "version": "1.0.0",
-  "main": "api/phone.js",
   "type": "module",
-  "dependencies": {}
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.x"
+  }
 }
